@@ -22,15 +22,22 @@ module fifo#(
     logic [$clog2(DEPTH) - 1:0] read_ptr;
     logic [$clog2(DEPTH):0] count;
     
+    
     assign full = (count == DEPTH) ? 1 : 0;
     assign empty = (count == 0) ? 1 : 0;
     
+    logic do_write;
+    logic do_read;
+    
+    assign do_write = write_en && !full;
+    assign do_read = read_en && !empty;
+    
     always_ff @(posedge clk or negedge reset) begin
         if (!reset) begin
-            write_ptr <= 3'b000;
+            write_ptr <= '0;
         end 
         else begin
-            if (write_en) begin
+            if (do_write) begin
                 mem[write_ptr] <= write_data;
                 write_ptr <= write_ptr + 1'b1;
             end
@@ -39,10 +46,10 @@ module fifo#(
     
     always_ff @(posedge clk or negedge reset) begin
         if (!reset) begin
-            read_ptr <= 3'b000;
+            read_ptr <= '0;
         end 
         else begin
-            if (read_en) begin
+            if (do_read) begin
                 read_data <= mem[read_ptr];
                 read_ptr <= read_ptr + 1'b1;
             end
@@ -51,10 +58,10 @@ module fifo#(
     
     always_ff @(posedge clk or negedge reset) begin
         if (!reset) begin
-            count <= 4'b0000;
+            count <= '0;
         end
         else begin
-            case ({write_en, read_en})
+            case ({do_write, do_read})
                 2'b10: count <= count + 1'b1; // write transaction
                 2'b01: count <= count - 1'b1; // read transaction
                 2'b11: count <= count; // write and read transaction
